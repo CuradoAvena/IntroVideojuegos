@@ -40,6 +40,10 @@ public class PopUpWindows : MonoBehaviour, IPointerClickHandler
             popupText.raycastTarget = true;
             popupText.enableWordWrapping = true;
             popupText.richText = true;
+            popupText.text = ""; // Limpia el texto inicial
+            // Fuerza la configuración para asegurar visibilidad
+            popupText.color = Color.white; // Color blanco para visibilidad
+            popupText.fontSize = 24; // Tamaño de fuente razonable
         }
     }
 
@@ -75,6 +79,7 @@ public class PopUpWindows : MonoBehaviour, IPointerClickHandler
             return;
         }
 
+        // Activa el pop-up
         popupWindow.SetActive(true);
 
         // Configura el texto según la opción seleccionada
