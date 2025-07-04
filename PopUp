@@ -1,0 +1,51 @@
+using UnityEngine;
+using UnityEngine.UI;
+using TMPro; // Necesario para TextMeshPro si usas TMP_Dropdown
+
+public class PopupController : MonoBehaviour
+{
+    [SerializeField] private TMP_Dropdown dropdown; // Referencia al Dropdown
+    [SerializeField] private GameObject popupWindow; // Referencia al panel de la ventana pop-up
+    [SerializeField] private TextMeshProUGUI popupText; // Texto dentro del pop-up
+
+    void Start()
+    {
+        // Asegúrate de que el pop-up esté desactivado al inicio
+        if (popupWindow != null)
+            popupWindow.SetActive(false);
+
+        // Añade un listener al Dropdown para detectar cambios
+        if (dropdown != null)
+            dropdown.onValueChanged.AddListener(OnDropdownValueChanged);
+    }
+
+    void OnDropdownValueChanged(int index)
+    {
+        // Activa el pop-up cuando se selecciona una opción
+        if (popupWindow != null)
+        {
+            popupWindow.SetActive(true);
+
+            // Opcional: Cambia el texto del pop-up según la opción seleccionada
+            if (popupText != null)
+            {
+                string selectedOption = dropdown.options[index].text;
+                popupText.text = $"Has seleccionado: {selectedOption}";
+            }
+        }
+    }
+
+    // Método para cerrar el pop-up (puedes llamarlo desde un botón en el pop-up)
+    public void ClosePopup()
+    {
+        if (popupWindow != null)
+            popupWindow.SetActive(false);
+    }
+
+    void OnDestroy()
+    {
+        // Limpia el listener para evitar memory leaks
+        if (dropdown != null)
+            dropdown.onValueChanged.RemoveListener(OnDropdownValueChanged);
+    }
+}
