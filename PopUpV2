@@ -1,69 +1,116 @@
 using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using TMPro;
 
-public class PopupController : MonoBehaviour
+public class PopUpWindows : MonoBehaviour, IPointerClickHandler
 {
     [SerializeField] private TMP_Dropdown dropdown; // Referencia al Dropdown
-    [SerializeField] private GameObject popupWindow; // Referencia al panel de la ventana pop-up
+    [SerializeField] private GameObject popupWindow; // Referencia al panel del pop-up
     [SerializeField] private TextMeshProUGUI popupText; // Texto dentro del pop-up
 
-    // Estructura para cada opción del Dropdown
-    [System.Serializable]
-    public struct DropdownOption
-    {
-        public string popupMessage; // Texto que se muestra en el pop-up
-        public string link; // Enlace asociado (vacío para la primera opción si no tiene enlace)
-    }
+    private const string versionText = "Información de la versión del juego."; // Texto para "Versión"
+    private const string companyText = "Visita nuestra empresa:"; // Texto base para "Empresa"
+    private const string companyLink = "https://www.youtube.com"; // Enlace para "Empresa"
+    private int selectedIndex; // Índice de la opción seleccionada
 
-    [SerializeField] private DropdownOption[] options = new DropdownOption[2]; // Dos opciones
-
-    void Start()
+    private void Start()
     {
-        // Asegúrate de que el pop-up esté desactivado al inicio
+        // Verifica referencias
+        if (popupWindow == null) Debug.LogError("Popup Window no está asignado en el Inspector.", this);
+        if (popupText == null) Debug.LogError("Popup Text no está asignado en el Inspector.", this);
+        if (dropdown == null) Debug.LogError("Dropdown no está asignado en el Inspector.", this);
+
+        // Verifica las opciones del Dropdown
+        if (dropdown != null && dropdown.options.Count != 3)
+        {
+            Debug.LogError($"El Dropdown debe tener exactamente 3 opciones (Seleccionar, Versión, Empresa), pero tiene {dropdown.options.Count}.", this);
+        }
+
+        // Desactiva el pop-up al inicio
         if (popupWindow != null)
             popupWindow.SetActive(false);
 
-        // Añade un listener al Dropdown para detectar cambios
+        // Configura el listener del Dropdown
         if (dropdown != null)
             dropdown.onValueChanged.AddListener(OnDropdownValueChanged);
 
-        // Habilita los hipervínculos en el texto del pop-up
+        // Configura TextMeshProUGUI para hipervínculos
         if (popupText != null)
         {
-            popupText.raycastTarget = true; // Necesario para detectar clics en el texto
-            popupText.GetComponent<TMP_Text>().OnTextLinkClicked += OnTextLinkClicked; // Listener para clics en enlaces
+            popupText.raycastTarget = true;
+            popupText.enableWordWrapping = true;
+            popupText.richText = true;
         }
     }
 
-    void OnDropdownValueChanged(int index)
+    private void OnDropdownValueChanged(int index)
     {
-        if (popupWindow != null && index < options.Length)
-        {
-            popupWindow.SetActive(true);
+        selectedIndex = index;
 
-            // Configura el texto del pop-up
-            if (popupText != null)
+        // Si es "Seleccionar" (index == 0), no hagas nada
+        if (index == 0)
+        {
+            if (popupWindow != null)
+                popupWindow.SetActive(false);
+            Debug.Log("Opción 'Seleccionar': No se muestra pop-up.", this);
+            return;
+        }
+
+        // Verifica si el índice es válido
+        if (index != 1 && index != 2)
+        {
+            Debug.LogError($"Índice {index} no válido. Solo se permiten índices 1 (Versión) y 2 (Empresa).", this);
+            return;
+        }
+
+        if (popupWindow == null)
+        {
+            Debug.LogError("Popup Window es null. Asegúrate de asignarlo en el Inspector.", this);
+            return;
+        }
+
+        if (popupText == null)
+        {
+            Debug.LogError("Popup Text es null. Asegúrate de asignarlo en el Inspector.", this);
+            return;
+        }
+
+        popupWindow.SetActive(true);
+
+        // Configura el texto según la opción seleccionada
+        if (index == 2) // Empresa
+        {
+            popupText.text = $"{companyText} <link=\"webLink\"><u><color=#0066CC>Click aquí</color></u></link>";
+            Debug.Log($"Mostrando texto para Empresa: {popupText.text}", this);
+        }
+        else // Versión (index == 1)
+        {
+            popupText.text = versionText;
+            Debug.Log($"Mostrando texto para Versión: {popupText.text}", this);
+        }
+    }
+
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (popupText == null || selectedIndex != 2)
+        {
+            Debug.LogWarning("No se puede abrir enlace: PopupText es null o no es Empresa.", this);
+            return;
+        }
+
+        int linkIndex = TMP_TextUtilities.FindIntersectingLink(popupText, eventData.position, null);
+        if (linkIndex != -1)
+        {
+            TMP_LinkInfo linkInfo = popupText.textInfo.linkInfo[linkIndex];
+            if (linkInfo.GetLinkID() == "webLink")
             {
-                // Si es la segunda opción y tiene enlace, formatea el texto con un hipervínculo
-                if (index == 1 && !string.IsNullOrEmpty(options[index].link))
-                {
-                    popupText.text = $"{options[index].popupMessage} <link><u><color=blue>Click aquí para visitar</color></u></link>";
-                }
-                else
-                {
-                    popupText.text = options[index].popupMessage; // Texto sin enlace para la primera opción
-                }
+                Application.OpenURL(companyLink);
+                Debug.Log($"Abriendo enlace: {companyLink}", this);
             }
         }
-    }
-
-    void OnTextLinkClicked(string linkID, int linkIndex)
-    {
-        // Abre el enlace de la segunda opción si se hace clic en el texto del hipervínculo
-        if (dropdown.value == 1 && !string.IsNullOrEmpty(options[1].link))
+        else
         {
-            Application.OpenURL(options[1].link);
+            Debug.Log("No se detectó clic en un enlace.", this);
         }
     }
 
@@ -71,16 +118,15 @@ public class PopupController : MonoBehaviour
     {
         if (popupWindow != null)
             popupWindow.SetActive(false);
+        else
+        {
+            Debug.LogError("Popup Window es null. No se puede cerrar el pop-up.", this);
+        }
     }
 
-    void OnDestroy()
+    private void OnDestroy()
     {
-        // Limpia los listeners para evitar memory leaks
         if (dropdown != null)
             dropdown.onValueChanged.RemoveListener(OnDropdownValueChanged);
-        if (popupText != null)
-        {
-            popupText.GetComponent<TMP_Text>().OnTextLinkClicked -= OnTextLinkClicked;
-        }
     }
 }
