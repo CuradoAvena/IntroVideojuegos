@@ -5,20 +5,22 @@ using TMPro;
 public class PopUpWindows : MonoBehaviour, IPointerClickHandler
 {
     [SerializeField] private TMP_Dropdown dropdown; // Referencia al Dropdown
-    [SerializeField] private GameObject popupWindow; // Referencia al panel del pop-up
-    [SerializeField] private TextMeshProUGUI popupText; // Texto dentro del pop-up
+    [SerializeField] private GameObject versionPopup; // Panel para el pop-up de "Versión"
+    [SerializeField] private TextMeshProUGUI versionText; // Texto dentro del pop-up de "Versión"
+    [SerializeField] private GameObject companyPopupText; // GameObject con TextMeshProUGUI para "Empresa" (hipervínculo)
 
-    private const string versionText = "Información de la versión del juego."; // Texto para "Versión"
-    private const string companyText = "Visita nuestra empresa:"; // Texto base para "Empresa"
-    private const string companyLink = "https://www.youtube.com"; // Enlace para "Empresa"
+    private const string versionMessage = "Información de la versión del juego."; // Texto para "Versión"
+    private const string companyMessage = "<link=\"webLink\"><u><color=#0066CC>Visita nuestra empresa</color></u></link>"; // Texto-hipervínculo para "Empresa"
+    private const string companyLink = "https://www.youtube.com"; // URL para "Empresa"
     private int selectedIndex; // Índice de la opción seleccionada
 
     private void Start()
     {
         // Verifica referencias
-        if (popupWindow == null) Debug.LogError("Popup Window no está asignado en el Inspector.", this);
-        if (popupText == null) Debug.LogError("Popup Text no está asignado en el Inspector.", this);
         if (dropdown == null) Debug.LogError("Dropdown no está asignado en el Inspector.", this);
+        if (versionPopup == null) Debug.LogError("Version Popup no está asignado en el Inspector.", this);
+        if (versionText == null) Debug.LogError("Version Text no está asignado en el Inspector.", this);
+        if (companyPopupText == null) Debug.LogError("Company Popup Text no está asignado en el Inspector.", this);
 
         // Verifica las opciones del Dropdown
         if (dropdown != null && dropdown.options.Count != 3)
@@ -26,24 +28,44 @@ public class PopUpWindows : MonoBehaviour, IPointerClickHandler
             Debug.LogError($"El Dropdown debe tener exactamente 3 opciones (Seleccionar, Versión, Empresa), pero tiene {dropdown.options.Count}.", this);
         }
 
-        // Desactiva el pop-up al inicio
-        if (popupWindow != null)
-            popupWindow.SetActive(false);
+        // Desactiva ambos pop-ups al inicio
+        if (versionPopup != null)
+            versionPopup.SetActive(false);
+        if (companyPopupText != null)
+            companyPopupText.SetActive(false);
 
         // Configura el listener del Dropdown
         if (dropdown != null)
             dropdown.onValueChanged.AddListener(OnDropdownValueChanged);
 
-        // Configura TextMeshProUGUI para hipervínculos
-        if (popupText != null)
+        // Configura TextMeshProUGUI para "Versión"
+        if (versionText != null)
         {
-            popupText.raycastTarget = true;
-            popupText.enableWordWrapping = true;
-            popupText.richText = true;
-            popupText.text = ""; // Limpia el texto inicial
-            // Fuerza la configuración para asegurar visibilidad
-            popupText.color = Color.white; // Color blanco para visibilidad
-            popupText.fontSize = 24; // Tamaño de fuente razonable
+            versionText.raycastTarget = false; // No necesita clics
+            versionText.enableWordWrapping = true;
+            versionText.richText = true;
+            versionText.text = versionMessage;
+            versionText.color = Color.white; // Asegura visibilidad
+            versionText.fontSize = 24;
+        }
+
+        // Configura TextMeshProUGUI para "Empresa"
+        if (companyPopupText != null)
+        {
+            TextMeshProUGUI companyText = companyPopupText.GetComponent<TextMeshProUGUI>();
+            if (companyText != null)
+            {
+                companyText.raycastTarget = true; // Necesario para clics
+                companyText.enableWordWrapping = true;
+                companyText.richText = true;
+                companyText.text = companyMessage;
+                companyText.color = Color.white; // Asegura visibilidad
+                companyText.fontSize = 24;
+            }
+            else
+            {
+                Debug.LogError("Company Popup Text no tiene un componente TextMeshProUGUI.", this);
+            }
         }
     }
 
@@ -51,11 +73,15 @@ public class PopUpWindows : MonoBehaviour, IPointerClickHandler
     {
         selectedIndex = index;
 
+        // Desactiva ambos pop-ups antes de procesar
+        if (versionPopup != null)
+            versionPopup.SetActive(false);
+        if (companyPopupText != null)
+            companyPopupText.SetActive(false);
+
         // Si es "Seleccionar" (index == 0), no hagas nada
         if (index == 0)
         {
-            if (popupWindow != null)
-                popupWindow.SetActive(false);
             Debug.Log("Opción 'Seleccionar': No se muestra pop-up.", this);
             return;
         }
@@ -67,46 +93,69 @@ public class PopUpWindows : MonoBehaviour, IPointerClickHandler
             return;
         }
 
-        if (popupWindow == null)
+        // Activa el pop-up correspondiente
+        if (index == 1) // Versión
         {
-            Debug.LogError("Popup Window es null. Asegúrate de asignarlo en el Inspector.", this);
-            return;
+            if (versionPopup != null)
+            {
+                versionPopup.SetActive(true);
+                if (versionText != null)
+                {
+                    versionText.text = versionMessage;
+                    Debug.Log($"Mostrando pop-up para Versión: {versionText.text}", this);
+                }
+                else
+                {
+                    Debug.LogError("Version Text es null.", this);
+                }
+            }
+            else
+            {
+                Debug.LogError("Version Popup es null.", this);
+            }
         }
-
-        if (popupText == null)
+        else if (index == 2) // Empresa
         {
-            Debug.LogError("Popup Text es null. Asegúrate de asignarlo en el Inspector.", this);
-            return;
-        }
-
-        // Activa el pop-up
-        popupWindow.SetActive(true);
-
-        // Configura el texto según la opción seleccionada
-        if (index == 2) // Empresa
-        {
-            popupText.text = $"{companyText} <link=\"webLink\"><u><color=#0066CC>Click aquí</color></u></link>";
-            Debug.Log($"Mostrando texto para Empresa: {popupText.text}", this);
-        }
-        else // Versión (index == 1)
-        {
-            popupText.text = versionText;
-            Debug.Log($"Mostrando texto para Versión: {popupText.text}", this);
+            if (companyPopupText != null)
+            {
+                companyPopupText.SetActive(true);
+                TextMeshProUGUI companyText = companyPopupText.GetComponent<TextMeshProUGUI>();
+                if (companyText != null)
+                {
+                    companyText.text = companyMessage;
+                    Debug.Log($"Mostrando pop-up para Empresa: {companyText.text}", this);
+                }
+                else
+                {
+                    Debug.LogError("Company Popup Text no tiene un componente TextMeshProUGUI.", this);
+                }
+            }
+            else
+            {
+                Debug.LogError("Company Popup Text es null.", this);
+            }
         }
     }
 
     public void OnPointerClick(PointerEventData eventData)
     {
-        if (popupText == null || selectedIndex != 2)
+        if (selectedIndex != 2 || companyPopupText == null)
         {
-            Debug.LogWarning("No se puede abrir enlace: PopupText es null o no es Empresa.", this);
+            Debug.LogWarning("No se puede abrir enlace: No es Empresa o Company Popup Text es null.", this);
             return;
         }
 
-        int linkIndex = TMP_TextUtilities.FindIntersectingLink(popupText, eventData.position, null);
+        TextMeshProUGUI companyText = companyPopupText.GetComponent<TextMeshProUGUI>();
+        if (companyText == null)
+        {
+            Debug.LogWarning("Company Popup Text no tiene un componente TextMeshProUGUI.", this);
+            return;
+        }
+
+        int linkIndex = TMP_TextUtilities.FindIntersectingLink(companyText, eventData.position, null);
         if (linkIndex != -1)
         {
-            TMP_LinkInfo linkInfo = popupText.textInfo.linkInfo[linkIndex];
+            TMP_LinkInfo linkInfo = companyText.textInfo.linkInfo[linkIndex];
             if (linkInfo.GetLinkID() == "webLink")
             {
                 Application.OpenURL(companyLink);
@@ -121,12 +170,11 @@ public class PopUpWindows : MonoBehaviour, IPointerClickHandler
 
     public void ClosePopup()
     {
-        if (popupWindow != null)
-            popupWindow.SetActive(false);
-        else
-        {
-            Debug.LogError("Popup Window es null. No se puede cerrar el pop-up.", this);
-        }
+        if (versionPopup != null)
+            versionPopup.SetActive(false);
+        if (companyPopupText != null)
+            companyPopupText.SetActive(false);
+        Debug.Log("Pop-ups cerrados.", this);
     }
 
     private void OnDestroy()
