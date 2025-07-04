@@ -1,17 +1,22 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using System.IO; // Para leer el archivo .txt
 
 public class PopupController : MonoBehaviour
 {
     [SerializeField] private TMP_Dropdown dropdown; // Referencia al Dropdown
     [SerializeField] private GameObject popupWindow; // Referencia al panel de la ventana pop-up
     [SerializeField] private TextMeshProUGUI popupText; // Texto dentro del pop-up
-    [SerializeField] private Button linkButton; // Botón para abrir el enlace
-    [SerializeField] private string linksFilePath = "Assets/Links/links.txt"; // Ruta del archivo .txt con los enlaces
 
-    private string[] links; // Almacena los enlaces leídos del archivo .txt
+    // Estructura para cada opción del Dropdown
+    [System.Serializable]
+    public struct DropdownOption
+    {
+        public string popupMessage; // Texto que se muestra en el pop-up
+        public string link; // Enlace asociado (vacío para la primera opción si no tiene enlace)
+    }
+
+    [SerializeField] private DropdownOption[] options = new DropdownOption[2]; // Dos opciones
 
     void Start()
     {
@@ -19,71 +24,46 @@ public class PopupController : MonoBehaviour
         if (popupWindow != null)
             popupWindow.SetActive(false);
 
-        // Carga los enlaces desde el archivo .txt
-        LoadLinksFromFile();
-
         // Añade un listener al Dropdown para detectar cambios
         if (dropdown != null)
             dropdown.onValueChanged.AddListener(OnDropdownValueChanged);
 
-        // Configura el botón para abrir el enlace
-        if (linkButton != null)
-            linkButton.onClick.AddListener(OpenLink);
-    }
-
-    void LoadLinksFromFile()
-    {
-        try
+        // Habilita los hipervínculos en el texto del pop-up
+        if (popupText != null)
         {
-            // Lee todas las líneas del archivo .txt
-            if (File.Exists(linksFilePath))
-            {
-                links = File.ReadAllLines(linksFilePath);
-            }
-            else
-            {
-                Debug.LogError("El archivo de enlaces no se encuentra en: " + linksFilePath);
-                links = new string[] { "", "" }; // Enlaces por defecto vacíos
-            }
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError("Error al leer el archivo de enlaces: " + e.Message);
-            links = new string[] { "", "" }; // Enlaces por defecto vacíos
+            popupText.raycastTarget = true; // Necesario para detectar clics en el texto
+            popupText.GetComponent<TMP_Text>().OnTextLinkClicked += OnTextLinkClicked; // Listener para clics en enlaces
         }
     }
 
     void OnDropdownValueChanged(int index)
     {
-        if (popupWindow != null)
+        if (popupWindow != null && index < options.Length)
         {
             popupWindow.SetActive(true);
 
-            // Configura el texto del pop-up según la opción seleccionada
+            // Configura el texto del pop-up
             if (popupText != null)
             {
-                string selectedOption = dropdown.options[index].text;
-                popupText.text = index == 0 ? "Texto para Opción 1" : "Texto para Opción 2";
-            }
-
-            // Actualiza el enlace asociado al botón según la opción seleccionada
-            if (linkButton != null && links != null && index < links.Length)
-            {
-                linkButton.gameObject.SetActive(!string.IsNullOrEmpty(links[index]));
+                // Si es la segunda opción y tiene enlace, formatea el texto con un hipervínculo
+                if (index == 1 && !string.IsNullOrEmpty(options[index].link))
+                {
+                    popupText.text = $"{options[index].popupMessage} <link><u><color=blue>Click aquí para visitar</color></u></link>";
+                }
+                else
+                {
+                    popupText.text = options[index].popupMessage; // Texto sin enlace para la primera opción
+                }
             }
         }
     }
 
-    void OpenLink()
+    void OnTextLinkClicked(string linkID, int linkIndex)
     {
-        int selectedIndex = dropdown.value;
-        if (links != null && selectedIndex < links.Length && !string.IsNullOrEmpty(links[selectedIndex]))
+        // Abre el enlace de la segunda opción si se hace clic en el texto del hipervínculo
+        if (dropdown.value == 1 && !string.IsNullOrEmpty(options[1].link))
         {
-            Application.OpenURL(links[selectedIndex]);
-        }
-        else
-        {
-            Debug.LogWarning("No hay enlace válido para la opción seleccionada.");
+            Application.OpenURL(options[1].link);
         }
     }
 
@@ -98,7 +78,9 @@ public class PopupController : MonoBehaviour
         // Limpia los listeners para evitar memory leaks
         if (dropdown != null)
             dropdown.onValueChanged.RemoveListener(OnDropdownValueChanged);
-        if (linkButton != null)
-            linkButton.onClick.RemoveListener(OpenLink);
+        if (popupText != null)
+        {
+            popupText.GetComponent<TMP_Text>().OnTextLinkClicked -= OnTextLinkClicked;
+        }
     }
 }
